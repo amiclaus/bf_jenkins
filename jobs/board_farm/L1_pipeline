@@ -1,0 +1,34 @@
+properties([
+    pipelineTriggers([
+        [$class: "SCMTrigger", scmpoll_spec: "H/5 * * * *"],
+    ])
+])
+
+pipeline {
+    agent any
+
+    environment {
+        MASTER_ADRO = "10.48.65.72:8080"
+        MASTER_ADGT = "10.116.171.108:8080"
+    }
+
+    stages {
+        stage('Initialize') 
+        {
+            steps{
+                git url: 'https://amiclaus@gitlab.analog.com/Platformation/board_farm_tests.git',
+        		branch: "update_fw",
+        		credentialsId: "BF_CREDENTIALS",
+        		poll: true
+            }
+        }
+        
+        stage('Run Tests') {
+            steps{
+                parallel(
+                    a: { triggerRemoteJob job: "http://${env.MASTER_ADRO}/job/board_farm/job/get_bf_scripts/", remoteJenkinsName: 'Master-ADRO'}
+                )
+            }
+        } 
+    }
+}

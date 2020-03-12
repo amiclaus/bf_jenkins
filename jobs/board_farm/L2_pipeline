@@ -1,0 +1,57 @@
+def collect_tests = '''#!/bin/bash
+cd tests
+for filename in *
+do 
+	. $filename &> /dev/null
+	TESTS_PLATFORM="${TESTS_PLATFORM}${filename},${PLATFORMS};";
+done
+echo ${TESTS_PLATFORM}
+'''
+
+/* Pipeline */
+pipeline {
+	agent {label 'bos'}
+
+	/* Set environment variables */
+	environment {
+		BF_TESTS_WORKSPACE = "${env.WORKSPACE}/bf_tests"
+	}
+
+	/* Pipeline Stages */
+	stages {
+		stage('Checkout BF Tests')
+		{
+			steps {
+				ws(BF_TESTS_WORKSPACE){
+					git url: 'https://gitlab.analog.com/Platformation/board_farm_tests.git',
+					branch: "master",
+					credentialsId: "BF_CREDENTIALS"
+				}
+			}
+		}
+
+		stage('Collect Tests')
+		{
+			steps{
+				ws(BF_TESTS_WORKSPACE){
+					script {
+						TEST_LIST=sh (script: collect_tests,
+						returnStdout: true).trim()
+					}
+				}
+				println "TEST_LIST CONTAINS: $TEST_LIST"
+			}
+		}
+
+		stage('Run tests on Slaves')
+		{
+			steps {
+				jobDsl targets:'jobs/board_farm/run_tests.groovy',
+				additionalParameters: [JOB_NAME: env.JOB_NAME,
+						       TEST_LIST: TEST_LIST,
+						       BF_TESTS_WORKSPACE: env.BF_TESTS_WORKSPACE]
+			}
+		}
+	
+	}
+}

@@ -1,0 +1,13 @@
+/* Pipeline */
+pipeline {
+	agent {label 'bos'}
+
+        /* Pipeline Stages */
+        stages {
+                stage('Checkout BF Tests'){
+                        steps {
+				jobDsl targets:'jobs/board_farm/get_scripts.groovy'
+			}
+                }
+        }
+}
